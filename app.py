@@ -3,6 +3,7 @@ import calendar
 import io
 import json
 import hashlib
+import re
 
 from openai import OpenAI
 from docx import Document
