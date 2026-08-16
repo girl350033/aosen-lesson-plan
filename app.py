@@ -3,7 +3,6 @@ import calendar
 import io
 import json
 import hashlib
-from copy import deepcopy
 
 from openai import OpenAI
 from docx import Document
@@ -255,8 +254,9 @@ PLAN_SCHEMA = {
 # AI 生成
 # ============================================================
 
-def get_openai_client():
-    api_key = st.secrets.get("OPENAI_API_KEY", "")
+def get_openai_client(api_key):
+    """只使用本次網頁輸入的 API Key；不寫入程式、檔案、資料庫或網址。"""
+    api_key = (api_key or "").strip()
     if not api_key:
         return None
     return OpenAI(api_key=api_key)
@@ -277,14 +277,19 @@ def schedule_signature(branch, year_roc, month, age_group, weekly_schedule):
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def generate_ai_month_plan(branch, year_roc, month, age_group, weekly_schedule):
-    client = get_openai_client()
+def generate_ai_month_plan(
+    branch,
+    year_roc,
+    month,
+    age_group,
+    weekly_schedule,
+    api_key,
+    model="gpt-5.1",
+):
+    client = get_openai_client(api_key)
     if client is None:
-        raise RuntimeError(
-            "尚未設定 OPENAI_API_KEY。請先在 Streamlit Secrets 加入 API Key。"
-        )
+        raise RuntimeError("請先在網頁輸入 OpenAI API Key。")
 
-    model = st.secrets.get("OPENAI_MODEL", "gpt-5.6")
     indicators = INDICATOR_POOLS[age_group]
 
     instructions = """
@@ -689,7 +694,7 @@ st.title("🏫 澳森托嬰中心 教案與適性月計畫系統")
 
 st.markdown(
     "完成輪值排班後，可下載輪值表；"
-    "再選擇月齡，由AI依每週主題與繪本重新設計適性月計畫。"
+    "再選擇月齡，依每週主題與繪本重新設計適性月計畫。"
 )
 
 # ============================================================
@@ -1111,12 +1116,30 @@ age_group = st.selectbox(
     key="month_plan_age_group",
 )
 
-if not st.secrets.get("OPENAI_API_KEY", ""):
-    st.warning(
-        "尚未設定 OpenAI API Key。"
-        "請先在 Streamlit Cloud → App settings → Secrets "
-        "加入 OPENAI_API_KEY。"
-    )
+st.markdown("#### 🔑 AI 連線設定")
+
+api_key_input = st.text_input(
+    "OpenAI API Key：",
+    type="password",
+    placeholder="請貼上你的 OpenAI API Key（例如 sk-...）",
+    help=(
+        "此欄位只用於本次瀏覽器工作階段呼叫 OpenAI API。"
+        "程式不會把 Key 寫入 Word、GitHub、資料庫或網址參數。"
+    ),
+)
+
+model_name = st.selectbox(
+    "AI 模型：",
+    ["gpt-5.1", "gpt-5-mini", "gpt-4.1-mini"],
+    index=0,
+    help="一般建議使用 gpt-5.1；若希望降低成本，可選 gpt-5-mini。",
+)
+
+st.caption(
+    "🔒 API Key 僅在你按下「AI產生／更新適性月計畫」時，"
+    "由 Streamlit 伺服器暫時用於呼叫 OpenAI；"
+    "不會寫入程式碼、下載文件、GitHub、資料庫或網址。"
+)
 
 current_sig = schedule_signature(
     branch,
@@ -1144,12 +1167,17 @@ with generate_col:
             with st.spinner(
                 "AI正在依每週主題、繪本與適齡指標設計月計畫..."
             ):
+                if not api_key_input.strip():
+                    raise RuntimeError("請先輸入 OpenAI API Key。")
+
                 result = generate_ai_month_plan(
                     branch,
                     year_roc,
                     month,
                     age_group,
                     weekly_schedule_for_plan,
+                    api_key_input,
+                    model_name,
                 )
                 st.session_state.generated_plan = result
                 st.session_state.generated_plan_signature = current_sig
