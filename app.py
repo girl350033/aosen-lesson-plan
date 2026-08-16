@@ -627,7 +627,7 @@ def generate_roster_docx(
 
 
 # ============================================================
-# Word 2：AI適性月計畫
+# Word 2：適性月計畫
 # ============================================================
 
 def format_domain_for_word(domain_data):
@@ -832,7 +832,7 @@ st.title("🏫 澳森托嬰中心 教案與適性月計畫系統")
 
 st.markdown(
     "完成輪值排班後，可下載輪值表；"
-    "再選擇月齡，由AI依每週主題與繪本重新設計適性月計畫。"
+    "再選擇月齡，依每週主題與繪本重新設計適性月計畫。"
 )
 
 # ============================================================
@@ -1327,7 +1327,7 @@ with generate_col:
 
 with clear_col:
     if st.button(
-        "清除AI內容",
+        "清除內容",
         use_container_width=True,
     ):
         st.session_state.generated_plan = None
