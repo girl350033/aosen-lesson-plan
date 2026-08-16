@@ -301,6 +301,84 @@ PLAN_SCHEMA = {
 }
 
 
+
+def build_plan_schema_for_age(age_group):
+    """
+    依目前月齡建立 Structured Outputs Schema。
+    indicators 直接使用 enum 限制，因此 AI 不可能回傳其他月齡的 E-1 / V-1-2 等錯誤代碼。
+    """
+    allowed_codes = [
+        indicator_code(item)
+        for item in INDICATOR_POOLS.get(age_group, [])
+        if indicator_code(item)
+    ]
+
+    domain_schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "activity_name": {"type": "string"},
+            "activity_1": {"type": "string"},
+            "activity_2": {"type": "string"},
+            "indicators": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                    "enum": allowed_codes,
+                },
+                "minItems": 1,
+                "maxItems": 2,
+            },
+        },
+        "required": [
+            "activity_name",
+            "activity_1",
+            "activity_2",
+            "indicators",
+        ],
+    }
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "weeks": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "week_index": {"type": "integer"},
+                        "theme": {"type": "string"},
+                        "book": {"type": "string"},
+                        "body": domain_schema,
+                        "social": domain_schema,
+                        "language": domain_schema,
+                        "cognition": domain_schema,
+                        "selfcare": domain_schema,
+                        "art": domain_schema,
+                        "environment": {"type": "string"},
+                    },
+                    "required": [
+                        "week_index",
+                        "theme",
+                        "book",
+                        "body",
+                        "social",
+                        "language",
+                        "cognition",
+                        "selfcare",
+                        "art",
+                        "environment",
+                    ],
+                },
+            },
+            "monthly_environment": {"type": "string"},
+        },
+        "required": ["weeks", "monthly_environment"],
+    }
+
+
 # ============================================================
 # AI 生成
 # ============================================================
@@ -382,7 +460,7 @@ def generate_ai_month_plan(
             "format": {
                 "type": "json_schema",
                 "name": "aosen_monthly_plan",
-                "schema": PLAN_SCHEMA,
+                "schema": build_plan_schema_for_age(age_group),
                 "strict": True,
             }
         },
@@ -406,7 +484,7 @@ def generate_ai_month_plan(
 
             if invalid:
                 raise RuntimeError(
-                    "AI回傳了不在本月齡指標池中的指標："
+                    "AI回傳了不屬於目前月齡的指標："
                     + "、".join(invalid)
                     + "。請重新產生。"
                 )
@@ -754,7 +832,7 @@ st.title("🏫 澳森托嬰中心 教案與適性月計畫系統")
 
 st.markdown(
     "完成輪值排班後，可下載輪值表；"
-    "再選擇月齡，每週主題與繪本重新設計適性月計畫。"
+    "再選擇月齡，由AI依每週主題與繪本重新設計適性月計畫。"
 )
 
 # ============================================================
@@ -1154,7 +1232,7 @@ st.download_button(
 
 st.markdown("---")
 st.markdown(
-    f"### 🌱 2. AI產生【{branch}適性發展活動月計畫】"
+    f"### 🌱 2. 產生【{branch}適性發展活動月計畫】"
 )
 
 if branch == "澳森":
@@ -1176,7 +1254,7 @@ age_group = st.selectbox(
     key="month_plan_age_group",
 )
 
-st.markdown("#### 🔑  連線設定")
+st.markdown("#### 🔑 連線設定")
 
 api_key_input = st.text_input(
     "OpenAI API Key：",
