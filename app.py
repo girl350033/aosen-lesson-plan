@@ -1116,7 +1116,7 @@ age_group = st.selectbox(
     key="month_plan_age_group",
 )
 
-st.markdown("#### 🔑 AI 連線設定")
+st.markdown("#### 🔑 連線設定")
 
 api_key_input = st.text_input(
     "OpenAI API Key：",
@@ -1130,7 +1130,7 @@ api_key_input = st.text_input(
 
 model_name = st.selectbox(
     "AI 模型：",
-    ["gpt-5.1", "gpt-5-mini", "gpt-4.1-mini"],
+    ["gpt-5-mini", "gpt-4.1-mini", "gpt-5.1"],
     index=0,
     help="一般建議使用 gpt-5.1；若希望降低成本，可選 gpt-5-mini。",
 )
@@ -1159,7 +1159,7 @@ generate_col, clear_col = st.columns([3, 1])
 
 with generate_col:
     if st.button(
-        "✨ AI產生／更新適性月計畫",
+        "✨ 產生／更新適性月計畫",
         type="primary",
         use_container_width=True,
     ):
