@@ -190,6 +190,56 @@ INDICATOR_POOLS = {
 }
 
 
+
+# ============================================================
+# 指標代碼正規化工具
+# AI 可回傳「V-1-2」或「V-1-2：完整文字」，系統都能辨識。
+# 最後會統一轉回本程式指標池中的完整文字。
+# ============================================================
+
+def indicator_code(indicator_text):
+    """擷取指標代碼。"""
+    if indicator_text is None:
+        return ""
+
+    s = str(indicator_text).strip().upper()
+
+    # 支援 I-1-1 / II-3-2 / III-4-6 / IV-1-7 / V-1-2 / VI-4-3 / E-3
+    m = re.search(r'\b(?:I{1,3}|IV|V|VI)-\d+(?:-\d+)?\b', s)
+    if m:
+        return m.group(0)
+
+    return s
+
+
+def build_indicator_lookup(age_group):
+    """建立 {代碼: 完整指標文字} 對照表。"""
+    lookup = {}
+    for item in INDICATOR_POOLS.get(age_group, []):
+        code = indicator_code(item)
+        if code:
+            lookup[code] = item
+    return lookup
+
+
+def normalize_indicators(age_group, indicators):
+    """把 AI 回傳的代碼／完整文字正規化為本地指標池完整文字。"""
+    lookup = build_indicator_lookup(age_group)
+    normalized = []
+    invalid = []
+
+    for raw in indicators or []:
+        code = indicator_code(raw)
+        if code in lookup:
+            normalized.append(lookup[code])
+        else:
+            invalid.append(str(raw))
+
+    normalized = list(dict.fromkeys(normalized))
+    invalid = list(dict.fromkeys(invalid))
+    return normalized, invalid
+
+
 # ============================================================
 # OpenAI Structured Outputs Schema
 # ============================================================
@@ -346,18 +396,27 @@ def generate_ai_month_plan(
     if len(result.get("weeks", [])) != len(weekly_schedule):
         raise RuntimeError("AI回傳週數與輪值表不一致，請重新產生。")
 
-    # 再防呆：AI只能使用指標池
-    allowed = set(indicators)
+    # 再防呆：AI只能使用本地指標池。
+    # AI即使只回傳代碼（例如 V-1-2），也會自動轉成完整指標文字。
     for week in result["weeks"]:
         for key in ["body", "social", "language", "cognition", "selfcare", "art"]:
             chosen = week[key].get("indicators", [])
-            invalid = [x for x in chosen if x not in allowed]
+            normalized, invalid = normalize_indicators(age_group, chosen)
+
             if invalid:
                 raise RuntimeError(
-                    "AI回傳了未授權的指標："
+                    "AI回傳了不在本月齡指標池中的指標："
                     + "、".join(invalid)
                     + "。請重新產生。"
                 )
+
+            if not normalized:
+                raise RuntimeError(
+                    f"AI在「{key}」領域沒有提供可用的適齡指標，請重新產生。"
+                )
+
+            # 網頁預覽與 Word 一律使用本地指標池中的完整文字
+            week[key]["indicators"] = normalized
 
     return result
 
@@ -694,7 +753,7 @@ st.title("🏫 澳森托嬰中心 教案與適性月計畫系統")
 
 st.markdown(
     "完成輪值排班後，可下載輪值表；"
-    "再選擇月齡，依每週主題與繪本重新設計適性月計畫。"
+    "再選擇月齡，每週主題與繪本重新設計適性月計畫。"
 )
 
 # ============================================================
@@ -1116,7 +1175,7 @@ age_group = st.selectbox(
     key="month_plan_age_group",
 )
 
-st.markdown("#### 🔑 連線設定")
+st.markdown("#### 🔑  連線設定")
 
 api_key_input = st.text_input(
     "OpenAI API Key：",
@@ -1130,13 +1189,13 @@ api_key_input = st.text_input(
 
 model_name = st.selectbox(
     "AI 模型：",
-    ["gpt-5-mini", "gpt-4.1-mini", "gpt-5.1"],
+    ["gpt-5-mini", "gpt-4.1-mini"],
     index=0,
-    help="一般建議使用 gpt-5.1；若希望降低成本，可選 gpt-5-mini。",
+    help="一般建議使用gpt-5-mini。",
 )
 
 st.caption(
-    "🔒 API Key 僅在你按下「AI產生／更新適性月計畫」時，"
+    "🔒 API Key 僅在你按下「產生／更新適性月計畫」時，"
     "由 Streamlit 伺服器暫時用於呼叫 OpenAI；"
     "不會寫入程式碼、下載文件、GitHub、資料庫或網址。"
 )
@@ -1165,7 +1224,7 @@ with generate_col:
     ):
         try:
             with st.spinner(
-                "AI正在依每週主題、繪本與適齡指標設計月計畫..."
+                "正在依每週主題、繪本與適齡指標設計月計畫..."
             ):
                 if not api_key_input.strip():
                     raise RuntimeError("請先輸入 OpenAI API Key。")
@@ -1202,7 +1261,7 @@ if (
 ):
     st.warning(
         "你已修改園所、月份、月齡、主題或繪本。"
-        "目前預覽是舊版本，請重新按「AI產生／更新適性月計畫」。"
+        "目前預覽是舊版本，請重新按「產生／更新適性月計畫」。"
     )
 
 plan_data = st.session_state.generated_plan
@@ -1265,7 +1324,7 @@ if plan_data is not None:
             file_name=(
                 f"{branch}_"
                 f"{year_roc}年{month}月_"
-                f"{age_group}_AI適性發展活動月計畫.docx"
+                f"{age_group}_適性發展活動月計畫.docx"
             ),
             mime=(
                 "application/vnd.openxmlformats-officedocument."
