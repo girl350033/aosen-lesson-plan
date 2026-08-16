@@ -127,7 +127,7 @@ def generate_docx(branch_name, year_roc, month, teachers_str, table_data, header
 
 # --- Web 介面佈局 ---
 st.title("🏫 托嬰中心月教案輪值排班系統")
-st.markdown("主任可選擇分園、設定月份與老師名單，系統會自動帶入對應週次與內建選項，並支援**一鍵生成 12pt Word 檔**。")
+st.markdown("主任可選擇分園（澳森／澳森文德），系統會**依分園自動切換體能課日期（澳森：週四／澳森文德：週三）**，並支援**一鍵生成 12pt Word 檔**。")
 
 # 1. 基本設定區
 st.subheader("壹、 基本設定")
@@ -149,8 +149,17 @@ raw_teachers = [t.strip() for t in teachers_input.split(",") if t.strip()]
 # 下拉選單整合：內建選項 + 自行輸入的老師名單
 dropdown_options = builtin_options[:2] + raw_teachers + builtin_options[2:]
 
-# 表頭固定設定（澳森與澳森文德體能課皆在星期三）
-headers = ["主題", "星期一：繪本", "星期二：小肌肉／認知", "星期三：體能課", "星期四：小肌肉／觸覺", "星期五：藝術創作"]
+# 依分園動態調整表頭與領域名稱
+if branch == "澳森":
+    # 澳森：星期三為小肌肉/觸覺，星期四為體能課
+    headers = ["主題", "星期一：繪本", "星期二：小肌肉／認知", "星期三：小肌肉／觸覺", "星期四：體能課", "星期五：藝術創作"]
+    wed_title_prefix = "週三：觸覺"
+    thu_title_prefix = "週四：體能"
+else:
+    # 澳森文德：星期三為體能課，星期四為小肌肉/觸覺
+    headers = ["主題", "星期一：繪本", "星期二：小肌肉／認知", "星期三：體能課", "星期四：小肌肉／觸覺", "星期五：藝術創作"]
+    wed_title_prefix = "週三：體能"
+    thu_title_prefix = "週四：觸覺"
 
 st.divider()
 
@@ -208,13 +217,13 @@ for idx, w in enumerate(work_weeks, start=1):
             tue_str = f"{d_tue}{t_txt}".strip() if d_tue else ""
 
         with col_w:
-            st.markdown(f"**週三：體能 ({d_wed})**" if d_wed else "**週三：體能**")
+            st.markdown(f"**{wed_title_prefix} ({d_wed})**" if d_wed else f"**{wed_title_prefix}**")
             wed_teacher = st.selectbox("負責人/狀態", dropdown_options, key=f"w_{idx}", index=0)
             w_txt = "" if wed_teacher == "（請選擇）" else f" {wed_teacher}"
             wed_str = f"{d_wed}{w_txt}".strip() if d_wed else ""
 
         with col_th:
-            st.markdown(f"**週四：觸覺 ({d_thu})**" if d_thu else "**週四：觸覺**")
+            st.markdown(f"**{thu_title_prefix} ({d_thu})**" if d_thu else f"**{thu_title_prefix}**")
             thu_teacher = st.selectbox("負責人/狀態", dropdown_options, key=f"th_t_{idx}", index=0)
             th_txt = "" if thu_teacher == "（請選擇）" else f" {thu_teacher}"
             thu_str = f"{d_thu}{th_txt}".strip() if d_thu else ""
