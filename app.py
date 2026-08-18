@@ -19,7 +19,7 @@ from docx.oxml.ns import nsdecls, qn
 # ============================================================
 
 st.set_page_config(
-    page_title="澳森托嬰中心 教案與適性月計畫系統",
+    page_title="托嬰中心 教案與適性月計畫系統",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -828,7 +828,7 @@ def generate_ai_plan_docx(
 # UI
 # ============================================================
 
-st.title("🏫 澳森托嬰中心 教案與適性月計畫系統")
+st.title("🏫 托嬰中心 教案與適性月計畫")
 
 st.markdown(
     "完成輪值排班後，可下載輪值表；"
@@ -846,7 +846,7 @@ c1, c2, c3 = st.columns([1.5, 1, 1])
 with c1:
     branch = st.selectbox(
         "園所：",
-        ["澳森", "澳森文德"],
+        ["西湖", "文德"],
     )
 
 with c2:
@@ -867,7 +867,7 @@ with c3:
 teachers_input = st.text_input(
     "主帶老師名單（請以逗號分隔）：",
     value="",
-    placeholder="例如：Panda, Candy, 綺綺, 樺樺, 小安, 均宜",
+    placeholder="例如：A, B, C",
 )
 
 st.markdown("#### 📖 使用說明")
@@ -883,6 +883,7 @@ st.markdown(
 builtin_options = [
     "（請選擇）",
     "主任",
+    "秋馨", 
     "特約醫師",
     "牙醫師",
     "消防演練",
@@ -903,7 +904,7 @@ dropdown_options = (
     + builtin_options[2:]
 )
 
-if branch == "澳森":
+if branch == "西湖":
     headers = [
         "主題",
         "星期一：繪本",
@@ -1235,7 +1236,7 @@ st.markdown(
     f"### 🌱 2. 產生【{branch}適性發展活動月計畫】"
 )
 
-if branch == "澳森":
+if branch == "西湖":
     available_ages = [
         "0-12個月",
         "12-24個月",
